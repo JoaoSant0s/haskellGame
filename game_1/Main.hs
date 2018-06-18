@@ -3,6 +3,7 @@ module Main where
 import Graphics.Gloss
 import Graphics.Gloss.Data.ViewPort
 import Graphics.Gloss.Interface.IO.Interact
+import Graphics.Gloss.Geometry.Angle
 
 width, height, offset, offsetWidth :: Int
 offsetWidth = 15
@@ -27,12 +28,13 @@ background = black
 -- | Data describing the state of the pong game.
 data PongGame = Game
   { ballLoc :: (Float, Float)  -- ^ Pong ball (x, y) location.
-  , ballVel :: (Float, Float)  -- ^ Pong ball (x, y) velocity. 
-  {- , player1 :: Float           -- ^ Left player paddle height.
-                               -- Zero is the middle of the screen. 
-  , player2 :: Float           -- ^ Right player paddle height. -}
+  , ballVel :: (Float, Float)  -- ^ Pong ball (x, y) velocity.   
   , reduceXVelocity:: Bool -- Reduce X velocity when respective direction have up button
   , reduceYVelocity:: Bool -- Reduce Y velocity when respective direction have up button
+  , rotationLeft:: Bool
+  , rotationRight:: Bool
+  , rotation:: Float
+  , savedRotation:: Float
   , ballDimension:: Float
   , directionX :: Float
   , directionY :: Float
@@ -43,11 +45,13 @@ data PongGame = Game
 initialState :: PongGame
 initialState = Game
   { ballLoc = (0, 0)
-  , ballVel = (20, 20)
-  {- , player1 = 40
-  , player2 = 40 -}
+  , ballVel = (50, 50)  
   , reduceXVelocity = False
   , reduceYVelocity = False
+  , rotationLeft = False
+  , rotationRight = False
+  , rotation = 0
+  , savedRotation = 0
   , ballDimension = 10
   , directionY = 0
   , directionX = 0
@@ -58,7 +62,7 @@ initialState = Game
 moveBall :: Float    -- ^ The number of seconds since last update
          -> PongGame -- ^ The initial game state
          -> PongGame -- ^ A new game state with an updated ball position
-moveBall seconds game = game { ballLoc = (x', y'), directionX = dX', directionY = dY'}
+moveBall seconds game = game { directionY = dY', rotation = newRotation, savedRotation = sRotation, ballLoc = (x', y')}
   where
     -- Old locations and velocities.
     dX = directionX game
@@ -66,8 +70,20 @@ moveBall seconds game = game { ballLoc = (x', y'), directionX = dX', directionY 
     (x, y) = ballLoc game
     (vx, vy) = ballVel game
 
-    auxX = x + vx * seconds * dX
-    auxY = y + vy * seconds * dY
+    newRotation = if rotationRight game
+                  then (rotation game + 5)
+                  else if rotationLeft game
+                    then (rotation game - 5)
+                    else rotation game
+
+    sRotation = if not (reduceYVelocity game)
+                    then newRotation
+                    else savedRotation game
+
+    rad = (degToRad (savedRotation game) )
+
+    auxX = x + (sin rad) * vx * seconds * dY
+    auxY = y + (cos rad) * vy * seconds * dY
 
     x' = if (auxX > (snd limitX) - (ballDimension game)) || (auxX < (fst limitX) + (ballDimension game))
          then x
@@ -76,30 +92,20 @@ moveBall seconds game = game { ballLoc = (x', y'), directionX = dX', directionY 
     y' = if (auxY > (snd limitY) - (ballDimension game)) || (auxY < (fst limitY) + (ballDimension game))
          then y
          else auxY
-
-    dX' = if not (reduceXVelocity game)
-          then dX
-          else if dX < 0
-            then (dX + seconds/(reducingVelocity game)) `min` 0
-            else (dX - seconds/(reducingVelocity game)) `max` 0
-
-    dY' = if not (reduceYVelocity game)
-          then dY
-          else if dY < 0
-            then (dY + seconds/(reducingVelocity game)) `min` 0
-            else (dY - seconds/(reducingVelocity game)) `max` 0
+    
+    dY' = if reduceYVelocity game
+          then (dY - seconds/(reducingVelocity game)) `max` 0
+          else dY
 
 -- | Convert a game state into a picture.
 render :: PongGame  -- ^ The game state to render.
        -> Picture   -- ^ A picture of this game state.
 render game =
-  pictures [ball{- , walls,
-            mkPaddle rose 120 $ player1 game,
-            mkPaddle orange (-120) $ player2 game -}]
+  pictures [ball]
   where
     --  The pong ball.
-    ball = uncurry translate (ballLoc game) $ color ballColor $ circleSolid (ballDimension game)
-    ballColor = dark red
+    ball = uncurry translate (ballLoc game) $ rotate (rotation game) $ color ballColor $ Line [(0, 20), (15, -10), (8, -5), (-8, -5), (-15, -10), (0, 20)]
+    ballColor = white
 
 -- | Respond to key events.
 handleKeys :: Event -> PongGame -> PongGame
@@ -107,15 +113,17 @@ handleKeys :: Event -> PongGame -> PongGame
 -- handleKeys (EventKey (Char 'r') Down _ _) game = game { ballLoc = (0, 0) }
 
 -- Ball control
-handleKeys (EventKey (SpecialKey KeyLeft) Down _ _) game = game { directionX = -1, reduceXVelocity = False}
-handleKeys (EventKey (SpecialKey KeyRight) Down _ _) game = game { directionX = 1, reduceXVelocity = False }
-handleKeys (EventKey (SpecialKey KeyLeft) Up _ _) game = game { reduceXVelocity = True}
-handleKeys (EventKey (SpecialKey KeyRight) Up _ _) game = game { reduceXVelocity = True }
+handleKeys (EventKey (SpecialKey KeyLeft) Down _ _) game = game { directionX = -1, reduceXVelocity = False, rotationLeft = True}
+handleKeys (EventKey (SpecialKey KeyLeft) Up _ _) game = game { reduceXVelocity = True, rotationLeft = False}
+
+handleKeys (EventKey (SpecialKey KeyRight) Down _ _) game = game { directionX = 1, reduceXVelocity = False, rotationRight = True}
+handleKeys (EventKey (SpecialKey KeyRight) Up _ _) game = game { reduceXVelocity = True, rotationRight = False }
 
 handleKeys (EventKey (SpecialKey KeyUp) Down _ _) game = game { directionY = 1, reduceYVelocity = False}
-handleKeys (EventKey (SpecialKey KeyDown) Down _ _) game = game { directionY = -1, reduceYVelocity = False}
 handleKeys (EventKey (SpecialKey KeyUp) Up _ _) game = game { reduceYVelocity = True}
-handleKeys (EventKey (SpecialKey KeyDown) Up _ _) game = game { reduceYVelocity = True}
+--handleKeys (EventKey (SpecialKey KeyDown) Down _ _) game = game { directionY = -1, reduceYVelocity = False}
+
+--handleKeys (EventKey (SpecialKey KeyDown) Up _ _) game = game { reduceYVelocity = True}
 
 -- Do nothing for all other events.
 handleKeys _ game = game
