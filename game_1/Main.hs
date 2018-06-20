@@ -27,73 +27,103 @@ background = black
 
 -- | Data describing the state of the pong game.
 data PongGame = Game
-  { ballLoc :: (Float, Float)  -- ^ Pong ball (x, y) location.
-  , ballVel :: Float  -- ^ Pong ball velocity.
-  , ballVelAxis :: (Float, Float)
-  , limitBallVel :: (Float, Float)
+  { shipLoc :: (Float, Float)  -- ^ Pong ball (x, y) location.  
+  , shipVelAxis :: (Float, Float)  
   , shipColor :: Color
   , attack :: Bool
   , bullets :: [Bullet]
   , incrementalVel :: Float
   , velocityIncrease :: Float
-  , reduceXVelocity :: Bool -- Reduce X velocity when respective direction have up button
-  , reduceYVelocity :: Bool -- Reduce Y velocity when respective direction have up button
+  , reduceYVelocity :: Bool
   , rotationLeft :: Bool
   , rotationRight :: Bool
   , rotation :: Float
   , savedRotation :: Float
-  , ballDimension :: Float
-  , directionX :: Float
-  , directionY :: Float
-  , reducingVelocity :: Float
+  , distanceBullet :: Float
   } deriving Show
 
 data Bullet = Bullet
-  {bulletPosition :: (Float, Float)
-  , bulletVelocity :: (Float, Float)
-  , bullletColor :: Color
+  { position :: (Float, Float)
+  , velocity :: (Float, Float)
+  , bulletColor :: Color
+  , bulletSize :: Float
+  , maxTime :: Float
+  , time :: Float
   } deriving Show
   -- | The starting state for the game of Pong.
 initialState :: PongGame
 initialState = Game
-  { ballLoc = (0, 0)
-  , ballVel = 0
+  { shipLoc = (0, 0)  
   , incrementalVel = 0
-  , ballVelAxis = (0, 0)
-  , shipColor = dark green
-  , limitBallVel = (-200, 200)
+  , shipVelAxis = (0, 0)
+  , shipColor = dark green  
   , bullets = []
   , attack = False
   , velocityIncrease = 0.1
-  , reduceXVelocity = False
   , reduceYVelocity = True
   , rotationLeft = False
   , rotationRight = False
   , rotation = 0
   , savedRotation = 0
-  , ballDimension = 10
-  , directionY = 0
-  , directionX = 0
-  , reducingVelocity = 5
+  , distanceBullet = 25
   }
 
+createBullet :: PongGame -> PongGame
+createBullet game = game {bullets = bullets', attack = attack'}
+  where
+    oldBullets = bullets game
+    attacking = attack game
+    bulletDistance = distanceBullet game
+
+    bullet = if attacking
+             then [Bullet { position = newPosition, velocity = bulletVelocity, bulletColor = (dark red), bulletSize =  2.5, maxTime = 4, time = 0}]
+             else []
+      
+    newPosition = axisPosition (shipLoc game) rad    
+    bulletVelocity = (200 * (sin rad), 200 * (cos rad))
+
+    rad = degToRad (rotation game)
+        
+    attack' = False
+    bullets' = oldBullets ++ bullet
+    
+    axisPosition :: (Float, Float) -> Float -> (Float, Float)
+    axisPosition (x, y) rad = (x + (sin rad) * bulletDistance, y + (cos rad) * bulletDistance)
+
+moveBullets :: Float -> PongGame -> PongGame
+moveBullets seconds game =  game { bullets = bullets' }
+  where
+    bullets' = map moveBullet filteredBullets
+              
+    filteredBullets = filter (\b -> (time b) < (maxTime b) ) currentBullets
+    currentBullets = (bullets game)
+    
+    moveBullet :: Bullet -> Bullet
+    moveBullet b = b {position = ( x', y'), time = time'}
+      where
+        time' = (time b) + seconds
+        x' = updateAxisPosition auxX limitX
+        y' = updateAxisPosition auxY limitY
+
+        (x, y) = position b
+        (vX, vY) = (velocity b)
+        auxX = x + vX * seconds
+        auxY = y + vY * seconds        
+    
 -- | Update the ball position using its current velocity.
-moveBall :: Float    -- ^ The number of seconds since last update
+moveShip :: Float    -- ^ The number of seconds since last update
          -> PongGame -- ^ The initial game state
          -> PongGame -- ^ A new game state with an updated ball position
-moveBall seconds game = game { rotation = newRotation, ballVelAxis = (vX', vY'), incrementalVel = incrementalVel', savedRotation = sRotation, ballLoc = (x', y')}
+moveShip seconds game = game { rotation = newRotation, shipVelAxis = (vX', vY'), incrementalVel = incrementalVel', savedRotation = sRotation, shipLoc = (x', y')}
   where
     -- Old locations and velocities.    
-    (x, y) = ballLoc game    
-    (vX, vY) = ballVelAxis game   
+    (x, y) = shipLoc game    
+    (vX, vY) = shipVelAxis game   
     incrementVel = incrementalVel game
     oldSavedRotation = savedRotation game
-    oldRotation = rotation game
-    v = sqrt (vX ** 2 + vY ** 2)
+    oldRotation = rotation game  
     
-    incrementalVel' = if not (reduceYVelocity game)
-                      then incrementVel + (velocityIncrease game)                                              
-                      else 0
+    incrementalVel' = if not (reduceYVelocity game) then incrementVel + (velocityIncrease game) else 0
 
     newRotation = if rotationRight game
                   then (oldRotation + 5)
@@ -101,33 +131,24 @@ moveBall seconds game = game { rotation = newRotation, ballVelAxis = (vX', vY'),
                     then (oldRotation - 5)
                     else oldRotation
 
-    sRotation = if not (reduceYVelocity game)
-                then newRotation
-                else oldSavedRotation
+    sRotation = if not (reduceYVelocity game) then newRotation else oldSavedRotation
 
-    rad = (degToRad oldSavedRotation)
-
-    auxVx = (vX + (sin rad) * incrementVel)
-    auxVy = (vY + (cos rad) * incrementVel)
+    rad = (degToRad oldSavedRotation)    
     
-    vX' = auxVx
-
-    vY' = auxVy
+    vX' =  (vX + (sin rad) * incrementVel)
+    vY' = (vY + (cos rad) * incrementVel)
 
     auxX = x + vX * seconds
     auxY = y + vY * seconds    
 
-    x' = if auxX > (snd limitX)
-         then (fst limitX)
-         else if auxX < (fst limitX)
-          then (snd limitX)
-          else auxX
-         
-    y' = if auxY > (snd limitY)       
-         then (fst limitY)
-         else if auxY < (fst limitY)
-          then (snd limitY)
-          else auxY  
+    x' = updateAxisPosition auxX limitX
+    y' = updateAxisPosition auxY limitY
+
+updateAxisPosition :: Float -> (Float, Float) -> Float
+updateAxisPosition nextValue (minLimit, maxLimit) 
+  | nextValue > maxLimit = minLimit
+  | nextValue < minLimit = maxLimit
+  | otherwise = nextValue
 
 -- | Convert a game state into a picture.
 render :: PongGame  -- ^ The game state to render.
@@ -136,31 +157,27 @@ render game =
   pictures [ball, renderBullets]
   where
     --  The pong ball.
-    ball = uncurry translate (ballLoc game) $ rotate (rotation game) $ color (shipColor game) $ Line [(0, 20), (12, -10), (5, -5), (-5, -5), (-12, -10), (0, 20)]
+    ball = uncurry translate (shipLoc game) $ rotate (rotation game) $ color (shipColor game) $ Line [(0, 20), (12, -10), (5, -5), (-5, -5), (-12, -10), (0, 20)]
     ballColor = dark green
 
-    renderBullets = createBullets (bullets game)
+    renderBullets = drawBullets (bullets game)
 
-    createBullet :: Bullet -> Picture
-    createBullet b = translate (fst (bulletPosition b)) (snd (bulletPosition b)) $ color white $ Circle 10
-
-    createBullets :: [Bullet] -> Picture
-    createBullets bs = pictures (map createBullet bs)    
-    --bulletObject = Bullet (ballLoc game) (0, 0) white 
-
-    {- bullet = if attack game
-             then Circle 10
-             else Blank -} 
+    drawBullet :: Bullet -> Picture
+    drawBullet b = translate (fst (position b)) (snd (position b)) $ color (bulletColor b) $ circleSolid (bulletSize b)
+    
+    drawBullets :: [Bullet] -> Picture
+    drawBullets bs = pictures (map drawBullet bs)    
+    --bulletObject = Bullet (shipLoc game) (0, 0) white    
 
 -- | Respond to key events.
 handleKeys :: Event -> PongGame -> PongGame
 
 -- Ball control
-handleKeys (EventKey (SpecialKey KeyLeft) Down _ _) game = game { directionX = -1, reduceXVelocity = False, rotationLeft = True}
-handleKeys (EventKey (SpecialKey KeyLeft) Up _ _) game = game { reduceXVelocity = True, rotationLeft = False}
+handleKeys (EventKey (SpecialKey KeyLeft) Down _ _) game = game { rotationLeft = True}
+handleKeys (EventKey (SpecialKey KeyLeft) Up _ _) game = game { rotationLeft = False}
 
-handleKeys (EventKey (SpecialKey KeyRight) Down _ _) game = game { directionX = 1, reduceXVelocity = False, rotationRight = True}
-handleKeys (EventKey (SpecialKey KeyRight) Up _ _) game = game { reduceXVelocity = True, rotationRight = False }
+handleKeys (EventKey (SpecialKey KeyRight) Down _ _) game = game { rotationRight = True}
+handleKeys (EventKey (SpecialKey KeyRight) Up _ _) game = game { rotationRight = False }
 
 handleKeys (EventKey (SpecialKey KeyUp) Down _ _) game = game { reduceYVelocity = False}
 handleKeys (EventKey (SpecialKey KeyUp) Up _ _) game = game { incrementalVel = 0, reduceYVelocity = True}
@@ -180,23 +197,4 @@ main = play window background fps initialState render handleKeys update
 -- | Update the game by moving the ball.
 -- Ignore the ViewPort argument.
 update :: Float -> PongGame -> PongGame
-update seconds = moveShot . (createShot . moveBall seconds)
-
-createShot :: PongGame -> PongGame
-createShot game = game {bullets = bullets', shipColor = color, attack = atk}
-  where
-    oldBullets = bullets game
-    attacking = attack game
-    atk = False
-
-    color = if attacking
-            then dark red
-            else dark green
-
-    bullets' = oldBullets ++ bullet
-
-    bullet = if attacking
-            then [(Bullet (ballLoc game) (0, 0) white)]
-            else []
-moveShot :: PongGame -> PongGame
-moveShot game = game
+update seconds = moveBullets seconds . (createBullet . moveShip seconds)
