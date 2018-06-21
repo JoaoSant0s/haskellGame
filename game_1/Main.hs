@@ -20,7 +20,7 @@ limitY :: (Float, Float)
 limitY = ( - fromIntegral height / 2, fromIntegral height / 2 )
 
 window :: Display
-window = InWindow "Pong" (width, height) (offset, offset)
+window = InWindow "Asteroids" (width, height) (offset, offset)
 
 background :: Color
 background = black
@@ -29,8 +29,8 @@ background = black
 data PongGame = Game
   { shipLoc :: (Float, Float)  -- ^ Pong ball (x, y) location.  
   , shipVelAxis :: (Float, Float)  
-  , shipColor :: Color
-  , attack :: Bool
+  , shipColor :: Color  
+  , attack :: Bool  
   , bullets :: [Bullet]
   , incrementalVel :: Float
   , velocityIncrease :: Float
@@ -57,8 +57,8 @@ initialState = Game
   , incrementalVel = 0
   , shipVelAxis = (0, 0)
   , shipColor = dark green  
-  , bullets = []
-  , attack = False
+  , bullets = []  
+  , attack = False  
   , velocityIncrease = 0.1
   , reduceYVelocity = True
   , rotationLeft = False
@@ -76,15 +76,16 @@ createBullet game = game {bullets = bullets', attack = attack'}
     bulletDistance = distanceBullet game
 
     bullet = if attacking
-             then [Bullet { position = newPosition, velocity = bulletVelocity, bulletColor = (dark red), bulletSize =  2.5, maxTime = 4, time = 0}]
+             then bulletObject
              else []
-      
+    
+    bulletObject = [Bullet { position = newPosition, velocity = bulletVelocity, bulletColor = (dark red), bulletSize =  2.5, maxTime = 4, time = 0}] 
     newPosition = axisPosition (shipLoc game) rad    
     bulletVelocity = (200 * (sin rad), 200 * (cos rad))
 
-    rad = degToRad (rotation game)
-        
-    attack' = False
+    rad = degToRad (rotation game)        
+    attack' = False    
+
     bullets' = oldBullets ++ bullet
     
     axisPosition :: (Float, Float) -> Float -> (Float, Float)
@@ -123,7 +124,7 @@ moveShip seconds game = game { rotation = newRotation, shipVelAxis = (vX', vY'),
     oldSavedRotation = savedRotation game
     oldRotation = rotation game  
     
-    incrementalVel' = if not (reduceYVelocity game) then incrementVel + (velocityIncrease game) else 0
+    incrementalVel' = if not (reduceYVelocity game) then incrementVel + (velocityIncrease game) else incrementVel
 
     newRotation = if rotationRight game
                   then (oldRotation + 5)
@@ -173,6 +174,8 @@ render game =
 handleKeys :: Event -> PongGame -> PongGame
 
 -- Ball control
+handleKeys (EventKey (SpecialKey KeyCtrlL) Down _ _) game = game {attack = True}
+
 handleKeys (EventKey (SpecialKey KeyLeft) Down _ _) game = game { rotationLeft = True}
 handleKeys (EventKey (SpecialKey KeyLeft) Up _ _) game = game { rotationLeft = False}
 
@@ -182,9 +185,6 @@ handleKeys (EventKey (SpecialKey KeyRight) Up _ _) game = game { rotationRight =
 handleKeys (EventKey (SpecialKey KeyUp) Down _ _) game = game { reduceYVelocity = False}
 handleKeys (EventKey (SpecialKey KeyUp) Up _ _) game = game { incrementalVel = 0, reduceYVelocity = True}
 
-handleKeys (EventKey (SpecialKey KeySpace) Down _ _) game = game {attack = True}
-
--- Do nothing for all other events.
 handleKeys _ game = game
 
 -- | Number of frames to show per second.
