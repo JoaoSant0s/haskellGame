@@ -19,6 +19,9 @@ limitX = ( - fromIntegral width / 2, fromIntegral width / 2 )
 limitY :: (Float, Float)
 limitY = ( - fromIntegral height / 2, fromIntegral height / 2 )
 
+shipDraw :: Path
+shipDraw = [(0, 20), (12, -10), (5, -5), (-5, -5), (-12, -10), (0, 20)]
+
 window :: Display
 window = InWindow "Asteroids" (width, height) (offset, offset)
 
@@ -32,6 +35,7 @@ data PongGame = Game
   , shipColor :: Color  
   , attack :: Bool  
   , bullets :: [Bullet]
+  , asteroids :: [Asteroid] 
   , incrementalVel :: Float
   , velocityIncrease :: Float
   , reduceYVelocity :: Bool
@@ -43,13 +47,21 @@ data PongGame = Game
   } deriving Show
 
 data Bullet = Bullet
-  { position :: (Float, Float)
-  , velocity :: (Float, Float)
+  { bulletPosition :: (Float, Float)
+  , bulletVelocity :: (Float, Float)
   , bulletColor :: Color
   , bulletSize :: Float
   , maxTime :: Float
   , time :: Float
   } deriving Show
+
+data Asteroid = Asteroid
+  { asteroidPosition  :: (Float, Float)        
+  , asteroidVelocity  :: (Float, Float)        
+  , asteroidColor :: Color
+  , asteroidSize :: Int        
+  } deriving Show
+
   -- | The starting state for the game of Pong.
 initialState :: PongGame
 initialState = Game
@@ -57,7 +69,8 @@ initialState = Game
   , incrementalVel = 0
   , shipVelAxis = (0, 0)
   , shipColor = dark green  
-  , bullets = []  
+  , bullets = []
+  , asteroids = initAsteroids
   , attack = False  
   , velocityIncrease = 0.1
   , reduceYVelocity = True
@@ -67,6 +80,29 @@ initialState = Game
   , savedRotation = 0
   , distanceBullet = 25
   }
+
+initAsteroids :: [Asteroid]
+initAsteroids = [Asteroid {asteroidPosition = (150, 150), asteroidVelocity = (-10, -10), asteroidColor = white, asteroidSize = 4}]
+
+asteroidDimension :: Int -> Path
+asteroidDimension index 
+  | index == 4 = [(50, 50), (50, -50), (-50, -50), (-50, 50), (50, 50)]
+
+moveAsteroids :: Float -> PongGame -> PongGame
+moveAsteroids seconds game = game { asteroids = asteroids' }
+  where
+    asteroids' = map moveAsteroid (asteroids game)    
+    
+    moveAsteroid :: Asteroid -> Asteroid
+    moveAsteroid b = b {asteroidPosition = ( x', y')}
+      where        
+        x' = updateAxisPosition auxX limitX
+        y' = updateAxisPosition auxY limitY
+
+        (x, y) = asteroidPosition b
+        (vX, vY) = (asteroidVelocity b)
+        auxX = x + vX * seconds
+        auxY = y + vY * seconds
 
 createBullet :: PongGame -> PongGame
 createBullet game = game {bullets = bullets', attack = attack'}
@@ -79,7 +115,7 @@ createBullet game = game {bullets = bullets', attack = attack'}
              then bulletObject
              else []
     
-    bulletObject = [Bullet { position = newPosition, velocity = bulletVelocity, bulletColor = (dark red), bulletSize =  2.5, maxTime = 4, time = 0}] 
+    bulletObject = [Bullet { bulletPosition = newPosition, bulletVelocity = bulletVelocity, bulletColor = (dark red), bulletSize =  2.5, maxTime = 4, time = 0}] 
     newPosition = axisPosition (shipLoc game) rad    
     bulletVelocity = (200 * (sin rad), 200 * (cos rad))
 
@@ -100,14 +136,14 @@ moveBullets seconds game =  game { bullets = bullets' }
     currentBullets = (bullets game)
     
     moveBullet :: Bullet -> Bullet
-    moveBullet b = b {position = ( x', y'), time = time'}
+    moveBullet b = b {bulletPosition = ( x', y'), time = time'}
       where
         time' = (time b) + seconds
         x' = updateAxisPosition auxX limitX
         y' = updateAxisPosition auxY limitY
 
-        (x, y) = position b
-        (vX, vY) = (velocity b)
+        (x, y) = bulletPosition b
+        (vX, vY) = (bulletVelocity b)
         auxX = x + vX * seconds
         auxY = y + vY * seconds        
     
@@ -155,19 +191,28 @@ updateAxisPosition nextValue (minLimit, maxLimit)
 render :: PongGame  -- ^ The game state to render.
        -> Picture   -- ^ A picture of this game state.
 render game =
-  pictures [ball, renderBullets]
+  pictures [ball, renderBullets, renderAsteroids]
   where
     --  The pong ball.
-    ball = uncurry translate (shipLoc game) $ rotate (rotation game) $ color (shipColor game) $ Line [(0, 20), (12, -10), (5, -5), (-5, -5), (-12, -10), (0, 20)]
+    ball = uncurry translate (shipLoc game) $ rotate (rotation game) $ color (shipColor game) $ Line shipDraw
     ballColor = dark green
 
     renderBullets = drawBullets (bullets game)
+    renderAsteroids = drawAsteroids (asteroids game)
 
     drawBullet :: Bullet -> Picture
-    drawBullet b = translate (fst (position b)) (snd (position b)) $ color (bulletColor b) $ circleSolid (bulletSize b)
+    drawBullet b = translate (fst (bulletPosition b)) (snd (bulletPosition b)) $ color (bulletColor b) $ circleSolid (bulletSize b)
     
     drawBullets :: [Bullet] -> Picture
-    drawBullets bs = pictures (map drawBullet bs)    
+    drawBullets bs = pictures (map drawBullet bs)
+
+    drawAsteroid :: Asteroid -> Picture
+    drawAsteroid a = translate (fst (asteroidPosition a)) (snd (asteroidPosition a)) $ color (asteroidColor a) $ (Line (asteroidDimension (asteroidSize a) ) )
+
+    drawAsteroids :: [Asteroid] -> Picture
+    drawAsteroids as = pictures (map drawAsteroid as)
+
+
     --bulletObject = Bullet (shipLoc game) (0, 0) white    
 
 -- | Respond to key events.
@@ -197,4 +242,4 @@ main = play window background fps initialState render handleKeys update
 -- | Update the game by moving the ball.
 -- Ignore the ViewPort argument.
 update :: Float -> PongGame -> PongGame
-update seconds = moveBullets seconds . (createBullet . moveShip seconds)
+update seconds = moveAsteroids seconds . (moveBullets seconds . (createBullet . moveShip seconds))
