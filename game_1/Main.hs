@@ -4,6 +4,7 @@ import Graphics.Gloss
 import Graphics.Gloss.Data.ViewPort
 import Graphics.Gloss.Interface.IO.Interact
 import Graphics.Gloss.Geometry.Angle
+import Graphics.Gloss.Data.Vector
 
 width, height, offset, offsetWidth :: Int
 offsetWidth = 15
@@ -59,7 +60,7 @@ data Asteroid = Asteroid
   { asteroidPosition  :: (Float, Float)        
   , asteroidVelocity  :: (Float, Float)        
   , asteroidColor :: Color
-  , asteroidSize :: Int        
+  , asteroidSize :: Float       
   } deriving Show
 
   -- | The starting state for the game of Pong.
@@ -82,11 +83,17 @@ initialState = Game
   }
 
 initAsteroids :: [Asteroid]
-initAsteroids = [Asteroid {asteroidPosition = (150, 150), asteroidVelocity = (-10, -10), asteroidColor = white, asteroidSize = 4}]
+initAsteroids = asteroids
+  where
+    asteroids = [
+      Asteroid {asteroidPosition = (150, 150), asteroidVelocity = (-10, -10), asteroidColor = white, asteroidSize = 50},
+      Asteroid {asteroidPosition = (-150, 150), asteroidVelocity = (-10, -10), asteroidColor = white, asteroidSize = 50}
+      ]
 
-asteroidDimension :: Int -> Path
+
+asteroidDimension :: Float -> Path
 asteroidDimension index 
-  | index == 4 = [(50, 50), (50, -50), (-50, -50), (-50, 50), (50, 50)]
+  | index == 50 = [(50, 50), (50, -50), (-50, -50), (-50, 50), (50, 50)]
 
 moveAsteroids :: Float -> PongGame -> PongGame
 moveAsteroids seconds game = game { asteroids = asteroids' }
@@ -207,7 +214,7 @@ render game =
     drawBullets bs = pictures (map drawBullet bs)
 
     drawAsteroid :: Asteroid -> Picture
-    drawAsteroid a = translate (fst (asteroidPosition a)) (snd (asteroidPosition a)) $ color (asteroidColor a) $ (Line (asteroidDimension (asteroidSize a) ) )
+    drawAsteroid a = translate (fst (asteroidPosition a)) (snd (asteroidPosition a)) $ color (asteroidColor a) $ Circle (asteroidSize a )
 
     drawAsteroids :: [Asteroid] -> Picture
     drawAsteroids as = pictures (map drawAsteroid as)
@@ -242,4 +249,25 @@ main = play window background fps initialState render handleKeys update
 -- | Update the game by moving the ball.
 -- Ignore the ViewPort argument.
 update :: Float -> PongGame -> PongGame
-update seconds = moveAsteroids seconds . (moveBullets seconds . (createBullet . moveShip seconds))
+update seconds = checkColision . (moveAsteroids seconds . (moveBullets seconds . (createBullet . moveShip seconds)))
+
+checkColision :: PongGame -> PongGame
+checkColision game = game {bullets = bullets', asteroids = asteroids'}
+  where
+    (bullets', asteroids') = checkBulletAsteroids (bullets game , asteroids game)     
+
+checkBulletAsteroids :: ([Bullet], [Asteroid]) -> ([Bullet], [Asteroid])
+checkBulletAsteroids (bs, as) = (newBullets, as)
+  where
+    newBullets = filterBullets bs as
+    
+    filterBullets :: [Bullet] -> [Asteroid] -> [Bullet]
+    filterBullets (bullet : bullets) (asteroid : asteroids)
+      | collides (bulletPosition bullet) (bulletSize bullet) (asteroidPosition asteroid) (asteroidSize asteroid) = filterBullets bullets asteroids
+      | otherwise = [bullet] ++ (filterBullets bullets asteroids)
+    filterBullets bullets _ = bullets        
+
+collides :: Point -> Float -> Point -> Float -> Bool
+collides (x1, y1) s1 (x2, y2) s2 = magV (subtraction) < s1 + s2
+    where
+      subtraction = (x1 - x2, y1 - y2)
