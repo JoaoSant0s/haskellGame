@@ -257,15 +257,29 @@ checkColision game = game {bullets = bullets', asteroids = asteroids'}
     (bullets', asteroids') = checkBulletAsteroids (bullets game , asteroids game)     
 
 checkBulletAsteroids :: ([Bullet], [Asteroid]) -> ([Bullet], [Asteroid])
-checkBulletAsteroids (bs, as) = (newBullets, as)
+checkBulletAsteroids (bullets, asteroids) = (newBullets, newAsteroids)
   where
-    newBullets = filterBullets bs as
-    
+    newAsteroids = filterAsteroids bullets asteroids
+    newBullets = filterBullets bullets asteroids        
+
+    filterAsteroids :: [Bullet] -> [Asteroid] -> [Asteroid]
+    filterAsteroids (bullet:bullets) asteroids = filterAsteroids bullets (notCollidedAsteroids asteroids bullet)
+    filterAsteroids bullets asteroids = asteroids
+
     filterBullets :: [Bullet] -> [Asteroid] -> [Bullet]
-    filterBullets (bullet : bullets) (asteroid : asteroids)
-      | collides (bulletPosition bullet) (bulletSize bullet) (asteroidPosition asteroid) (asteroidSize asteroid) = filterBullets bullets asteroids
-      | otherwise = [bullet] ++ (filterBullets bullets asteroids)
-    filterBullets bullets _ = bullets        
+    filterBullets bullets (asteroid : asteroids) = filterBullets (notCollidedBullets bullets asteroid) asteroids     
+    filterBullets bullets asteroids = bullets
+
+    notCollidedAsteroids :: [Asteroid] -> Bullet -> [Asteroid]
+    notCollidedAsteroids asteroids bullet  = filter (\asteroid -> not (collide asteroid bullet ) ) asteroids
+
+    notCollidedBullets :: [Bullet] -> Asteroid -> [Bullet]
+    notCollidedBullets bullets asteroid = filter (\bullet -> not (collide asteroid bullet ) ) bullets
+
+    collide:: Asteroid -> Bullet -> Bool
+    collide a b = collides (bulletPosition b) (bulletSize b) (asteroidPosition a) (asteroidSize a)
+
+--checkBulletAsteroids (cb, ca) = (cb, ca)
 
 collides :: Point -> Float -> Point -> Float -> Bool
 collides (x1, y1) s1 (x2, y2) s2 = magV (subtraction) < s1 + s2
