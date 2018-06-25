@@ -6,11 +6,8 @@ import Graphics.Gloss.Interface.IO.Interact
 import Graphics.Gloss.Geometry.Angle
 import Graphics.Gloss.Data.Vector
 
-width, height, offset, offsetWidth :: Int
-offsetWidth = 15
-paddleWidth = 26
-paddleHeight = 86
-width = 800
+width, height, offset :: Int
+width = 1024
 height = 600
 offset = 100
 
@@ -86,14 +83,29 @@ initAsteroids :: [Asteroid]
 initAsteroids = asteroids
   where
     asteroids = [
-      Asteroid {asteroidPosition = (150, 150), asteroidVelocity = (-10, -10), asteroidColor = white, asteroidSize = 50},
-      Asteroid {asteroidPosition = (-150, 150), asteroidVelocity = (-10, -10), asteroidColor = white, asteroidSize = 50}
+      Asteroid {asteroidPosition = (600, 150), asteroidVelocity = (-10, -10), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (-350, 150), asteroidVelocity = (-10, -10), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (-400, -150), asteroidVelocity = (-10, -10), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (600, -250), asteroidVelocity = (20, -20), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (50, 100), asteroidVelocity = (10, -20), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (-600, 60), asteroidVelocity = (-10, 20), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (350, -150), asteroidVelocity = (-10, -10), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (-200, -250), asteroidVelocity = (-10, -10), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (500, -50), asteroidVelocity = (-20, -10), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (50, 100), asteroidVelocity = (10, -20), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (100, -100), asteroidVelocity = (10, 20), asteroidColor = white, asteroidSize = 10},
+
+      Asteroid {asteroidPosition = (300, -300), asteroidVelocity = (-10, -10), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (350, 20), asteroidVelocity = (20, 20), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (-200, -50), asteroidVelocity = (-10, -10), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (0430, -50), asteroidVelocity = (20, -30), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (-50, 100), asteroidVelocity = (20, -20), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (-60, 100), asteroidVelocity = (-20, 20), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (30, -350), asteroidVelocity = (-20, -10), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (-120, 150), asteroidVelocity = (10, -10), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (-50, 200), asteroidVelocity = (10, -20), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (-50, -50), asteroidVelocity = (-5, -20), asteroidColor = white, asteroidSize = 10}      
       ]
-
-
-asteroidDimension :: Float -> Path
-asteroidDimension index 
-  | index == 50 = [(50, 50), (50, -50), (-50, -50), (-50, 50), (50, 50)]
 
 moveAsteroids :: Float -> PongGame -> PongGame
 moveAsteroids seconds game = game { asteroids = asteroids' }
@@ -278,8 +290,6 @@ checkBulletAsteroids (bullets, asteroids) = (newBullets, newAsteroids)
 
     collide:: Asteroid -> Bullet -> Bool
     collide a b = collides (bulletPosition b) (bulletSize b) (asteroidPosition a) (asteroidSize a)
-
---checkBulletAsteroids (cb, ca) = (cb, ca)
 
 collides :: Point -> Float -> Point -> Float -> Bool
 collides (x1, y1) s1 (x2, y2) s2 = magV (subtraction) < s1 + s2
