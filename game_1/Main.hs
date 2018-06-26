@@ -47,6 +47,7 @@ data AsteroidsGame = Game
   , rotation :: Float
   , savedRotation :: Float
   , distanceBullet :: Float
+  , score :: Int
   } deriving Show
 
 data Bullet = Bullet
@@ -87,6 +88,7 @@ initialState = Game
   , rotation = 0
   , savedRotation = 0
   , distanceBullet = 25
+  , score = 0
   }
 
 resetState :: AsteroidsGame -> AsteroidsGame
@@ -102,7 +104,8 @@ resetState game = game
   , rotationLeft = False
   , rotationRight = False
   , rotation = 0
-  , savedRotation = 0  
+  , savedRotation = 0
+  , score = 0
   }
 
 initAsteroids :: [Asteroid]
@@ -124,11 +127,11 @@ initAsteroids = asteroids
       Asteroid {asteroidPosition = (300, -300), asteroidVelocity = (-10, -30), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = -1, asteroidRotation = 0},
       Asteroid {asteroidPosition = (350, 20), asteroidVelocity = (20, 20), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = 1, asteroidRotation = 0},
       Asteroid {asteroidPosition = (-200, -50), asteroidVelocity = (-10, -10), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = -1, asteroidRotation = 0},
-      Asteroid {asteroidPosition = (0430, -50), asteroidVelocity = (20, -30), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = 1, asteroidRotation = 0},
+      Asteroid {asteroidPosition = (300, -50), asteroidVelocity = (20, -30), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = 1, asteroidRotation = 0},
       Asteroid {asteroidPosition = (-50, 100), asteroidVelocity = (30, -20), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = -1, asteroidRotation = 0},
-      Asteroid {asteroidPosition = (-60, 100), asteroidVelocity = (-20, 20), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = 1, asteroidRotation = 0},
+      Asteroid {asteroidPosition = (-60, 100), asteroidVelocity = (-25, 15), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = 1, asteroidRotation = 0},
       Asteroid {asteroidPosition = (30, -350), asteroidVelocity = (-20, -30), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = -0.25, asteroidRotation = 0},
-      Asteroid {asteroidPosition = (-120, 150), asteroidVelocity = (5, -10), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = 0.5, asteroidRotation = 0},
+      Asteroid {asteroidPosition = (-120, 150), asteroidVelocity = (20, -25), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = 0.5, asteroidRotation = 0},
       Asteroid {asteroidPosition = (-50, 200), asteroidVelocity = (10, -25), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = -0.5, asteroidRotation = 0},
       Asteroid {asteroidPosition = (-50, -50), asteroidVelocity = (-5, -20), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = 1, asteroidRotation = 0}
       ]
@@ -242,10 +245,12 @@ updateAxisPosition nextValue (minLimit, maxLimit)
   | otherwise = nextValue
 
 checkCollision :: AsteroidsGame -> AsteroidsGame
-checkCollision game = if reset then newGame else game {bullets = bullets', asteroids = asteroids'}
+checkCollision game = if reset then newGame else game {bullets = bullets', asteroids = asteroids', score = score'}
   where
-    (newGame, reset) = checkShipAsteroids game  
-    (bullets', asteroids') = checkBulletAsteroids (bullets game , asteroids game)     
+    (newGame, reset) = checkShipAsteroids game
+    baseAsteroids = asteroids game
+    score' = score game + ( (length baseAsteroids - length asteroids') * 5 )
+    (bullets', asteroids') = checkBulletAsteroids (bullets game , baseAsteroids)     
 
 checkShipAsteroids :: AsteroidsGame -> (AsteroidsGame, Bool)
 checkShipAsteroids game = if length collidedShip > 0 then (resetState game, True) else (game, False)
@@ -285,12 +290,14 @@ collides (x1, y1) s1 (x2, y2) s2 = magV (subtraction) < s1 + s2
 
 render :: AsteroidsGame  -- ^ The game state to render.
        -> Picture   -- ^ A picture of this game state.
-render game = pictures [ship, renderBullets, renderAsteroids]
+render game = pictures [ship, renderBullets, renderAsteroids, renderLabel, renderScore]
   where    
     ship = uncurry translate (shipLoc game) $ rotate (rotation game) $ color (shipColor game) $ Line shipDraw    
 
     renderBullets = drawBullets (bullets game)
     renderAsteroids = drawAsteroids (asteroids game)
+    renderScore = drawScore (score game)
+    renderLabel = drawLabel
 
     drawBullet :: Bullet -> Picture
     drawBullet b = uncurry translate (bulletPosition b) $ color (bulletColor b) $ circleSolid (bulletSize b)
@@ -304,6 +311,11 @@ render game = pictures [ship, renderBullets, renderAsteroids]
     drawAsteroids :: [Asteroid] -> Picture
     drawAsteroids as = pictures (map drawAsteroid as)     
 
+    drawLabel :: Picture
+    drawLabel = uncurry translate (0, 300) $ color (dark green) $ rectangleSolid 100 50
+
+    drawScore :: Int -> Picture
+    drawScore value = uncurry translate (-fromIntegral (12 * (length (show value)) ), 285) $ scale 0.3 0.3 $ color black $ Text (show value)
 -- | Respond to key events.
 handleKeys :: Event -> AsteroidsGame -> AsteroidsGame
 
