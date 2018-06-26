@@ -59,10 +59,12 @@ data Bullet = Bullet
   } deriving Show
 
 data Asteroid = Asteroid
-  { asteroidPosition  :: (Float, Float)        
-  , asteroidVelocity  :: (Float, Float)        
+  { asteroidPosition  :: (Float, Float)
+  , asteroidVelocity  :: (Float, Float)
   , asteroidColor :: Color
-  , asteroidSize :: Float       
+  , asteroidSize :: Float
+  , asteroidVelocityRotation :: Float
+  , asteroidRotation :: Float
   } deriving Show
 
 initialState :: AsteroidsGame
@@ -107,29 +109,33 @@ initAsteroids :: [Asteroid]
 initAsteroids = asteroids
   where
     asteroids = [
-      Asteroid {asteroidPosition = (600, 150), asteroidVelocity = (-20, -10), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (-350, 150), asteroidVelocity = (-10, -20), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (-400, -150), asteroidVelocity = (-20, -20), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (600, -250), asteroidVelocity = (20, -30), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (50, 100), asteroidVelocity = (10, -30), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (-600, 60), asteroidVelocity = (-20, 20), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (350, -150), asteroidVelocity = (-20, -10), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (-200, -250), asteroidVelocity = (-30, -10), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (500, -50), asteroidVelocity = (-20, -10), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (50, 100), asteroidVelocity = (20, -30), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (100, -100), asteroidVelocity = (10, 20), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (600, 150), asteroidVelocity = (-20, -10), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = 0.75, asteroidRotation = 0},
+      Asteroid {asteroidPosition = (-350, 150), asteroidVelocity = (-10, -20), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = -0.5, asteroidRotation = 0},
+      Asteroid {asteroidPosition = (-400, -150), asteroidVelocity = (-20, -20), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = 1, asteroidRotation = 0},
+      Asteroid {asteroidPosition = (600, -250), asteroidVelocity = (20, -30), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = -0.75, asteroidRotation = 0},
+      Asteroid {asteroidPosition = (50, 100), asteroidVelocity = (10, -30), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = 1, asteroidRotation = 0},
+      Asteroid {asteroidPosition = (-600, 60), asteroidVelocity = (-20, 20), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = -0.25, asteroidRotation = 0},
+      Asteroid {asteroidPosition = (350, -150), asteroidVelocity = (-20, -10), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = 1, asteroidRotation = 0},
+      Asteroid {asteroidPosition = (-200, -250), asteroidVelocity = (-30, -10), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = -1, asteroidRotation = 0},
+      Asteroid {asteroidPosition = (500, -50), asteroidVelocity = (-20, -10), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = 0.15, asteroidRotation = 0},
+      Asteroid {asteroidPosition = (50, 100), asteroidVelocity = (20, -30), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = -1, asteroidRotation = 0},
+      Asteroid {asteroidPosition = (100, -100), asteroidVelocity = (10, 20), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = 0.5, asteroidRotation = 0},
 
-      Asteroid {asteroidPosition = (300, -300), asteroidVelocity = (-10, -30), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (350, 20), asteroidVelocity = (20, 20), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (-200, -50), asteroidVelocity = (-10, -10), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (0430, -50), asteroidVelocity = (20, -30), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (-50, 100), asteroidVelocity = (30, -20), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (-60, 100), asteroidVelocity = (-20, 20), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (30, -350), asteroidVelocity = (-20, -30), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (-120, 150), asteroidVelocity = (5, -10), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (-50, 200), asteroidVelocity = (10, -25), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (-50, -50), asteroidVelocity = (-5, -20), asteroidColor = white, asteroidSize = 10}      
+      Asteroid {asteroidPosition = (300, -300), asteroidVelocity = (-10, -30), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = -1, asteroidRotation = 0},
+      Asteroid {asteroidPosition = (350, 20), asteroidVelocity = (20, 20), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = 1, asteroidRotation = 0},
+      Asteroid {asteroidPosition = (-200, -50), asteroidVelocity = (-10, -10), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = -1, asteroidRotation = 0},
+      Asteroid {asteroidPosition = (0430, -50), asteroidVelocity = (20, -30), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = 1, asteroidRotation = 0},
+      Asteroid {asteroidPosition = (-50, 100), asteroidVelocity = (30, -20), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = -1, asteroidRotation = 0},
+      Asteroid {asteroidPosition = (-60, 100), asteroidVelocity = (-20, 20), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = 1, asteroidRotation = 0},
+      Asteroid {asteroidPosition = (30, -350), asteroidVelocity = (-20, -30), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = -0.25, asteroidRotation = 0},
+      Asteroid {asteroidPosition = (-120, 150), asteroidVelocity = (5, -10), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = 0.5, asteroidRotation = 0},
+      Asteroid {asteroidPosition = (-50, 200), asteroidVelocity = (10, -25), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = -0.5, asteroidRotation = 0},
+      Asteroid {asteroidPosition = (-50, -50), asteroidVelocity = (-5, -20), asteroidColor = white, asteroidSize = 10, asteroidVelocityRotation = 1, asteroidRotation = 0}
       ]
+
+asteroidDimension :: Float -> Path
+asteroidDimension size
+  | size == 10 = [(5, 10), (10, 5), (10, -7), (7, -10), (-7, -7), (-10, 2), (-5, 5), (-2, 10), (5, 10)]
 
 moveAsteroids :: Float -> AsteroidsGame -> AsteroidsGame
 moveAsteroids seconds game = game { asteroids = asteroids' }
@@ -137,10 +143,11 @@ moveAsteroids seconds game = game { asteroids = asteroids' }
     asteroids' = map moveAsteroid (asteroids game)    
     
     moveAsteroid :: Asteroid -> Asteroid
-    moveAsteroid b = b {asteroidPosition = ( x', y')}
+    moveAsteroid b = b {asteroidPosition = ( x', y'), asteroidRotation = asteroidRotation'}
       where        
         x' = updateAxisPosition auxX limitX
         y' = updateAxisPosition auxY limitY
+        asteroidRotation' = (asteroidRotation b) + (asteroidVelocityRotation b)
 
         (x, y) = asteroidPosition b
         (vX, vY) = (asteroidVelocity b)
@@ -278,22 +285,21 @@ collides (x1, y1) s1 (x2, y2) s2 = magV (subtraction) < s1 + s2
 
 render :: AsteroidsGame  -- ^ The game state to render.
        -> Picture   -- ^ A picture of this game state.
-render game = pictures [asteroid, renderBullets, renderAsteroids]
+render game = pictures [ship, renderBullets, renderAsteroids]
   where    
-    asteroid = uncurry translate (shipLoc game) $ rotate (rotation game) $ color (shipColor game) $ Line shipDraw
-    ballColor = dark green
+    ship = uncurry translate (shipLoc game) $ rotate (rotation game) $ color (shipColor game) $ Line shipDraw    
 
     renderBullets = drawBullets (bullets game)
     renderAsteroids = drawAsteroids (asteroids game)
 
     drawBullet :: Bullet -> Picture
-    drawBullet b = translate (fst (bulletPosition b)) (snd (bulletPosition b)) $ color (bulletColor b) $ circleSolid (bulletSize b)
+    drawBullet b = uncurry translate (bulletPosition b) $ color (bulletColor b) $ circleSolid (bulletSize b)
     
     drawBullets :: [Bullet] -> Picture
     drawBullets bs = pictures (map drawBullet bs)
 
     drawAsteroid :: Asteroid -> Picture
-    drawAsteroid a = translate (fst (asteroidPosition a)) (snd (asteroidPosition a)) $ color (asteroidColor a) $ Circle (asteroidSize a )
+    drawAsteroid a = uncurry translate (asteroidPosition a) $ rotate (asteroidRotation a) $ color (asteroidColor a) $ Line (asteroidDimension (asteroidSize a ) )
 
     drawAsteroids :: [Asteroid] -> Picture
     drawAsteroids as = pictures (map drawAsteroid as)     
