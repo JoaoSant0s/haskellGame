@@ -6,10 +6,11 @@ import Graphics.Gloss.Interface.IO.Interact
 import Graphics.Gloss.Geometry.Angle
 import Graphics.Gloss.Data.Vector
 
-width, height, offset :: Int
+width, height, offsetWidth, offsetHeight :: Int
 width = 1024
-height = 600
-offset = 100
+height = 650
+offsetWidth = 150
+offsetHeight = 15
 
 limitX :: (Float, Float)
 limitX = ( - fromIntegral width / 2, fromIntegral width / 2 )
@@ -21,7 +22,7 @@ shipDraw :: Path
 shipDraw = [(0, 20), (12, -10), (5, -5), (-5, -5), (-12, -10), (0, 20)]
 
 window :: Display
-window = InWindow "Asteroids" (width, height) (offset, offset)
+window = InWindow "Asteroids" (width, height) (offsetWidth, offsetHeight)
 
 background :: Color
 background = black
@@ -31,13 +32,16 @@ data AsteroidsGame = Game
   { shipLoc :: (Float, Float)  -- ^ Pong ball (x, y) location.  
   , shipVelAxis :: (Float, Float)  
   , shipDimension :: Float
-  , shipColor :: Color  
+  , shipColor :: Color 
+  , attackTime :: Float
+  , attackDelay :: Float
   , attack :: Bool  
   , bullets :: [Bullet]
   , asteroids :: [Asteroid] 
   , incrementalVel :: Float
+  , maxIncrementalVel :: Float
   , velocityIncrease :: Float
-  , reduceYVelocity :: Bool
+  , acelerate :: Bool
   , rotationLeft :: Bool
   , rotationRight :: Bool
   , rotation :: Float
@@ -66,13 +70,16 @@ initialState = Game
   { shipLoc = (0, 0)  
   , shipDimension = 10
   , incrementalVel = 0
+  , maxIncrementalVel = 10
   , shipVelAxis = (0, 0)
   , shipColor = dark green  
   , bullets = []
   , asteroids = initAsteroids
+  , attackTime = -1
+  , attackDelay = 0.25
   , attack = False  
   , velocityIncrease = 0.1
-  , reduceYVelocity = True
+  , acelerate = False
   , rotationLeft = False
   , rotationRight = False
   , rotation = 0
@@ -89,7 +96,7 @@ resetState game = game
   , asteroids = initAsteroids
   , attack = False  
   , velocityIncrease = 0.1
-  , reduceYVelocity = True
+  , acelerate = False
   , rotationLeft = False
   , rotationRight = False
   , rotation = 0
@@ -100,27 +107,27 @@ initAsteroids :: [Asteroid]
 initAsteroids = asteroids
   where
     asteroids = [
-      Asteroid {asteroidPosition = (600, 150), asteroidVelocity = (-10, -10), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (-350, 150), asteroidVelocity = (-10, -10), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (-400, -150), asteroidVelocity = (-10, -10), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (600, -250), asteroidVelocity = (20, -20), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (50, 100), asteroidVelocity = (10, -20), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (-600, 60), asteroidVelocity = (-10, 20), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (350, -150), asteroidVelocity = (-10, -10), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (-200, -250), asteroidVelocity = (-10, -10), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (600, 150), asteroidVelocity = (-20, -10), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (-350, 150), asteroidVelocity = (-10, -20), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (-400, -150), asteroidVelocity = (-20, -20), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (600, -250), asteroidVelocity = (20, -30), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (50, 100), asteroidVelocity = (10, -30), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (-600, 60), asteroidVelocity = (-20, 20), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (350, -150), asteroidVelocity = (-20, -10), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (-200, -250), asteroidVelocity = (-30, -10), asteroidColor = white, asteroidSize = 10},
       Asteroid {asteroidPosition = (500, -50), asteroidVelocity = (-20, -10), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (50, 100), asteroidVelocity = (10, -20), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (50, 100), asteroidVelocity = (20, -30), asteroidColor = white, asteroidSize = 10},
       Asteroid {asteroidPosition = (100, -100), asteroidVelocity = (10, 20), asteroidColor = white, asteroidSize = 10},
 
-      Asteroid {asteroidPosition = (300, -300), asteroidVelocity = (-10, -10), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (300, -300), asteroidVelocity = (-10, -30), asteroidColor = white, asteroidSize = 10},
       Asteroid {asteroidPosition = (350, 20), asteroidVelocity = (20, 20), asteroidColor = white, asteroidSize = 10},
       Asteroid {asteroidPosition = (-200, -50), asteroidVelocity = (-10, -10), asteroidColor = white, asteroidSize = 10},
       Asteroid {asteroidPosition = (0430, -50), asteroidVelocity = (20, -30), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (-50, 100), asteroidVelocity = (20, -20), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (-50, 100), asteroidVelocity = (30, -20), asteroidColor = white, asteroidSize = 10},
       Asteroid {asteroidPosition = (-60, 100), asteroidVelocity = (-20, 20), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (30, -350), asteroidVelocity = (-20, -10), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (-120, 150), asteroidVelocity = (10, -10), asteroidColor = white, asteroidSize = 10},
-      Asteroid {asteroidPosition = (-50, 200), asteroidVelocity = (10, -20), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (30, -350), asteroidVelocity = (-20, -30), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (-120, 150), asteroidVelocity = (5, -10), asteroidColor = white, asteroidSize = 10},
+      Asteroid {asteroidPosition = (-50, 200), asteroidVelocity = (10, -25), asteroidColor = white, asteroidSize = 10},
       Asteroid {asteroidPosition = (-50, -50), asteroidVelocity = (-5, -20), asteroidColor = white, asteroidSize = 10}      
       ]
 
@@ -140,16 +147,17 @@ moveAsteroids seconds game = game { asteroids = asteroids' }
         auxX = x + vX * seconds
         auxY = y + vY * seconds
 
-createBullet :: AsteroidsGame -> AsteroidsGame
-createBullet game = game {bullets = bullets', attack = attack'}
+createBullet :: Float -> AsteroidsGame -> AsteroidsGame
+createBullet seconds game = game {bullets = bullets', attack = attack', attackTime = attackTime'}
   where
     oldBullets = bullets game
     attacking = attack game
     bulletDistance = distanceBullet game
 
-    bullet = if attacking
-             then bulletObject
-             else []
+    attackT = attackTime game
+    attackD = attackDelay game    
+
+    (attackTime', bullet) = if attackT < 0 && attacking then (attackD, bulletObject) else (attackT - seconds, [])
     
     bulletObject = [Bullet { bulletPosition = newPosition, bulletVelocity = bulletVelocity, bulletColor = (dark red), bulletSize =  2.5, maxTime = 4, time = 0}] 
     newPosition = axisPosition (shipLoc game) rad    
@@ -190,10 +198,16 @@ moveShip seconds game = game { rotation = newRotation, shipVelAxis = (vX', vY'),
     (x, y) = shipLoc game    
     (vX, vY) = shipVelAxis game   
     incrementVel = incrementalVel game
+    maxIncrementVel = maxIncrementalVel game
     oldSavedRotation = savedRotation game
     oldRotation = rotation game  
     
-    incrementalVel' = if not (reduceYVelocity game) then incrementVel + (velocityIncrease game) else incrementVel
+    incrementalVel' = if acelerate game && not ( (rotationRight game) || (rotationLeft game) )
+                      then incrementVel + (velocityIncrease game) 
+                      else if (rotationRight game) || (rotationLeft game)
+                        then 0 
+                        else incrementVel
+    --local = if acelerate game && incrementVel < maxIncrementVel then incrementVel + (velocityIncrease game) else 0
 
     newRotation = if rotationRight game
                   then (oldRotation + 5)
@@ -201,7 +215,7 @@ moveShip seconds game = game { rotation = newRotation, shipVelAxis = (vX', vY'),
                     then (oldRotation - 5)
                     else oldRotation
 
-    sRotation = if not (reduceYVelocity game) then newRotation else oldSavedRotation
+    sRotation = if acelerate game then newRotation else oldSavedRotation
 
     rad = (degToRad oldSavedRotation)    
     
@@ -296,8 +310,8 @@ handleKeys (EventKey (SpecialKey KeyLeft) Up _ _) game = game { rotationLeft = F
 handleKeys (EventKey (SpecialKey KeyRight) Down _ _) game = game { rotationRight = True}
 handleKeys (EventKey (SpecialKey KeyRight) Up _ _) game = game { rotationRight = False }
 
-handleKeys (EventKey (SpecialKey KeyUp) Down _ _) game = game { reduceYVelocity = False}
-handleKeys (EventKey (SpecialKey KeyUp) Up _ _) game = game { incrementalVel = 0, reduceYVelocity = True}
+handleKeys (EventKey (SpecialKey KeyUp) Down _ _) game = game { acelerate = True}
+handleKeys (EventKey (SpecialKey KeyUp) Up _ _) game = game { incrementalVel = 0, acelerate = False}
 
 handleKeys (EventKey (Char 'r') Down _ _) game = resetState game
 
@@ -313,5 +327,5 @@ main = play window background fps initialState render handleKeys update
 -- | Update the game by moving the ball.
 -- Ignore the ViewPort argument.
 update :: Float -> AsteroidsGame -> AsteroidsGame
-update seconds = checkCollision . (moveAsteroids seconds . (moveBullets seconds . (createBullet . moveShip seconds)))
+update seconds = checkCollision . (moveAsteroids seconds . (moveBullets seconds . (createBullet seconds . (moveShip seconds) ) ) )
 
