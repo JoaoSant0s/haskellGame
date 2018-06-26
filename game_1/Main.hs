@@ -171,7 +171,7 @@ createBullet seconds game = game {bullets = bullets', attack = attack', attackTi
     
     bulletObject = [Bullet { bulletPosition = newPosition, bulletVelocity = bulletVelocity, bulletColor = (dark red), bulletSize =  2.5, maxTime = 4, time = 0}] 
     newPosition = axisPosition (shipLoc game) rad    
-    bulletVelocity = (200 * (sin rad), 200 * (cos rad))
+    bulletVelocity = (250 * (sin rad), 250 * (cos rad))
 
     rad = degToRad (rotation game)        
     attack' = False    
