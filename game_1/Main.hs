@@ -26,8 +26,8 @@ window = InWindow "Asteroids" (width, height) (offset, offset)
 background :: Color
 background = black
 
--- | Data describing the state of the pong game.
-data PongGame = Game
+-- | Data describing the state of the asteroids game.
+data AsteroidsGame = Game
   { shipLoc :: (Float, Float)  -- ^ Pong ball (x, y) location.  
   , shipVelAxis :: (Float, Float)  
   , shipColor :: Color  
@@ -60,8 +60,7 @@ data Asteroid = Asteroid
   , asteroidSize :: Float       
   } deriving Show
 
-  -- | The starting state for the game of Pong.
-initialState :: PongGame
+initialState :: AsteroidsGame
 initialState = Game
   { shipLoc = (0, 0)  
   , incrementalVel = 0
@@ -79,6 +78,23 @@ initialState = Game
   , distanceBullet = 25
   }
 
+resetState :: AsteroidsGame -> AsteroidsGame
+resetState game = game  { 
+    shipLoc = (0, 0)  
+  , incrementalVel = 0
+  , shipVelAxis = (0, 0)
+  , shipColor = dark green  
+  , bullets = []
+  , asteroids = initAsteroids
+  , attack = False  
+  , velocityIncrease = 0.1
+  , reduceYVelocity = True
+  , rotationLeft = False
+  , rotationRight = False
+  , rotation = 0
+  , savedRotation = 0
+  , distanceBullet = 25
+  }
 initAsteroids :: [Asteroid]
 initAsteroids = asteroids
   where
@@ -107,7 +123,7 @@ initAsteroids = asteroids
       Asteroid {asteroidPosition = (-50, -50), asteroidVelocity = (-5, -20), asteroidColor = white, asteroidSize = 10}      
       ]
 
-moveAsteroids :: Float -> PongGame -> PongGame
+moveAsteroids :: Float -> AsteroidsGame -> AsteroidsGame
 moveAsteroids seconds game = game { asteroids = asteroids' }
   where
     asteroids' = map moveAsteroid (asteroids game)    
@@ -123,7 +139,7 @@ moveAsteroids seconds game = game { asteroids = asteroids' }
         auxX = x + vX * seconds
         auxY = y + vY * seconds
 
-createBullet :: PongGame -> PongGame
+createBullet :: AsteroidsGame -> AsteroidsGame
 createBullet game = game {bullets = bullets', attack = attack'}
   where
     oldBullets = bullets game
@@ -146,7 +162,7 @@ createBullet game = game {bullets = bullets', attack = attack'}
     axisPosition :: (Float, Float) -> Float -> (Float, Float)
     axisPosition (x, y) rad = (x + (sin rad) * bulletDistance, y + (cos rad) * bulletDistance)
 
-moveBullets :: Float -> PongGame -> PongGame
+moveBullets :: Float -> AsteroidsGame -> AsteroidsGame
 moveBullets seconds game =  game { bullets = bullets' }
   where
     bullets' = map moveBullet filteredBullets
@@ -168,8 +184,8 @@ moveBullets seconds game =  game { bullets = bullets' }
     
 -- | Update the ball position using its current velocity.
 moveShip :: Float    -- ^ The number of seconds since last update
-         -> PongGame -- ^ The initial game state
-         -> PongGame -- ^ A new game state with an updated ball position
+         -> AsteroidsGame -- ^ The initial game state
+         -> AsteroidsGame -- ^ A new game state with an updated ball position
 moveShip seconds game = game { rotation = newRotation, shipVelAxis = (vX', vY'), incrementalVel = incrementalVel', savedRotation = sRotation, shipLoc = (x', y')}
   where
     -- Old locations and velocities.    
@@ -206,64 +222,7 @@ updateAxisPosition nextValue (minLimit, maxLimit)
   | nextValue < minLimit = maxLimit
   | otherwise = nextValue
 
--- | Convert a game state into a picture.
-render :: PongGame  -- ^ The game state to render.
-       -> Picture   -- ^ A picture of this game state.
-render game =
-  pictures [ball, renderBullets, renderAsteroids]
-  where
-    --  The pong ball.
-    ball = uncurry translate (shipLoc game) $ rotate (rotation game) $ color (shipColor game) $ Line shipDraw
-    ballColor = dark green
-
-    renderBullets = drawBullets (bullets game)
-    renderAsteroids = drawAsteroids (asteroids game)
-
-    drawBullet :: Bullet -> Picture
-    drawBullet b = translate (fst (bulletPosition b)) (snd (bulletPosition b)) $ color (bulletColor b) $ circleSolid (bulletSize b)
-    
-    drawBullets :: [Bullet] -> Picture
-    drawBullets bs = pictures (map drawBullet bs)
-
-    drawAsteroid :: Asteroid -> Picture
-    drawAsteroid a = translate (fst (asteroidPosition a)) (snd (asteroidPosition a)) $ color (asteroidColor a) $ Circle (asteroidSize a )
-
-    drawAsteroids :: [Asteroid] -> Picture
-    drawAsteroids as = pictures (map drawAsteroid as)
-
-
-    --bulletObject = Bullet (shipLoc game) (0, 0) white    
-
--- | Respond to key events.
-handleKeys :: Event -> PongGame -> PongGame
-
--- Ball control
-handleKeys (EventKey (SpecialKey KeyCtrlL) Down _ _) game = game {attack = True}
-
-handleKeys (EventKey (SpecialKey KeyLeft) Down _ _) game = game { rotationLeft = True}
-handleKeys (EventKey (SpecialKey KeyLeft) Up _ _) game = game { rotationLeft = False}
-
-handleKeys (EventKey (SpecialKey KeyRight) Down _ _) game = game { rotationRight = True}
-handleKeys (EventKey (SpecialKey KeyRight) Up _ _) game = game { rotationRight = False }
-
-handleKeys (EventKey (SpecialKey KeyUp) Down _ _) game = game { reduceYVelocity = False}
-handleKeys (EventKey (SpecialKey KeyUp) Up _ _) game = game { incrementalVel = 0, reduceYVelocity = True}
-
-handleKeys _ game = game
-
--- | Number of frames to show per second.
-fps :: Int
-fps = 60
-
-main :: IO ()
-main = play window background fps initialState render handleKeys update
-
--- | Update the game by moving the ball.
--- Ignore the ViewPort argument.
-update :: Float -> PongGame -> PongGame
-update seconds = checkColision . (moveAsteroids seconds . (moveBullets seconds . (createBullet . moveShip seconds)))
-
-checkColision :: PongGame -> PongGame
+checkColision :: AsteroidsGame -> AsteroidsGame
 checkColision game = game {bullets = bullets', asteroids = asteroids'}
   where
     (bullets', asteroids') = checkBulletAsteroids (bullets game , asteroids game)     
@@ -295,3 +254,58 @@ collides :: Point -> Float -> Point -> Float -> Bool
 collides (x1, y1) s1 (x2, y2) s2 = magV (subtraction) < s1 + s2
     where
       subtraction = (x1 - x2, y1 - y2)
+-- | Convert a game state into a picture.
+render :: AsteroidsGame  -- ^ The game state to render.
+       -> Picture   -- ^ A picture of this game state.
+render game =
+  pictures [asteroid, renderBullets, renderAsteroids]
+  where    
+    asteroid = uncurry translate (shipLoc game) $ rotate (rotation game) $ color (shipColor game) $ Line shipDraw
+    ballColor = dark green
+
+    renderBullets = drawBullets (bullets game)
+    renderAsteroids = drawAsteroids (asteroids game)
+
+    drawBullet :: Bullet -> Picture
+    drawBullet b = translate (fst (bulletPosition b)) (snd (bulletPosition b)) $ color (bulletColor b) $ circleSolid (bulletSize b)
+    
+    drawBullets :: [Bullet] -> Picture
+    drawBullets bs = pictures (map drawBullet bs)
+
+    drawAsteroid :: Asteroid -> Picture
+    drawAsteroid a = translate (fst (asteroidPosition a)) (snd (asteroidPosition a)) $ color (asteroidColor a) $ Circle (asteroidSize a )
+
+    drawAsteroids :: [Asteroid] -> Picture
+    drawAsteroids as = pictures (map drawAsteroid as)     
+
+-- | Respond to key events.
+handleKeys :: Event -> AsteroidsGame -> AsteroidsGame
+
+-- Ball control
+handleKeys (EventKey (SpecialKey KeyCtrlL) Down _ _) game = game {attack = True}
+
+handleKeys (EventKey (SpecialKey KeyLeft) Down _ _) game = game { rotationLeft = True}
+handleKeys (EventKey (SpecialKey KeyLeft) Up _ _) game = game { rotationLeft = False}
+
+handleKeys (EventKey (SpecialKey KeyRight) Down _ _) game = game { rotationRight = True}
+handleKeys (EventKey (SpecialKey KeyRight) Up _ _) game = game { rotationRight = False }
+
+handleKeys (EventKey (SpecialKey KeyUp) Down _ _) game = game { reduceYVelocity = False}
+handleKeys (EventKey (SpecialKey KeyUp) Up _ _) game = game { incrementalVel = 0, reduceYVelocity = True}
+
+handleKeys (EventKey (Char 'r') Down _ _) game = resetState game
+
+handleKeys _ game = game
+
+-- | Number of frames to show per second.
+fps :: Int
+fps = 60
+
+main :: IO ()
+main = play window background fps initialState render handleKeys update
+
+-- | Update the game by moving the ball.
+-- Ignore the ViewPort argument.
+update :: Float -> AsteroidsGame -> AsteroidsGame
+update seconds = checkColision . (moveAsteroids seconds . (moveBullets seconds . (createBullet . moveShip seconds)))
+
