@@ -30,6 +30,7 @@ background = black
 data AsteroidsGame = Game
   { shipLoc :: (Float, Float)  -- ^ Pong ball (x, y) location.  
   , shipVelAxis :: (Float, Float)  
+  , shipDimension :: Float
   , shipColor :: Color  
   , attack :: Bool  
   , bullets :: [Bullet]
@@ -63,6 +64,7 @@ data Asteroid = Asteroid
 initialState :: AsteroidsGame
 initialState = Game
   { shipLoc = (0, 0)  
+  , shipDimension = 10
   , incrementalVel = 0
   , shipVelAxis = (0, 0)
   , shipColor = dark green  
@@ -79,11 +81,10 @@ initialState = Game
   }
 
 resetState :: AsteroidsGame -> AsteroidsGame
-resetState game = game  { 
-    shipLoc = (0, 0)  
+resetState game = game 
+  { shipLoc = (0, 0)  
   , incrementalVel = 0
-  , shipVelAxis = (0, 0)
-  , shipColor = dark green  
+  , shipVelAxis = (0, 0)  
   , bullets = []
   , asteroids = initAsteroids
   , attack = False  
@@ -92,9 +93,9 @@ resetState game = game  {
   , rotationLeft = False
   , rotationRight = False
   , rotation = 0
-  , savedRotation = 0
-  , distanceBullet = 25
+  , savedRotation = 0  
   }
+
 initAsteroids :: [Asteroid]
 initAsteroids = asteroids
   where
@@ -181,11 +182,8 @@ moveBullets seconds game =  game { bullets = bullets' }
         (vX, vY) = (bulletVelocity b)
         auxX = x + vX * seconds
         auxY = y + vY * seconds        
-    
--- | Update the ball position using its current velocity.
-moveShip :: Float    -- ^ The number of seconds since last update
-         -> AsteroidsGame -- ^ The initial game state
-         -> AsteroidsGame -- ^ A new game state with an updated ball position
+
+moveShip :: Float -> AsteroidsGame -> AsteroidsGame
 moveShip seconds game = game { rotation = newRotation, shipVelAxis = (vX', vY'), incrementalVel = incrementalVel', savedRotation = sRotation, shipLoc = (x', y')}
   where
     -- Old locations and velocities.    
@@ -222,11 +220,20 @@ updateAxisPosition nextValue (minLimit, maxLimit)
   | nextValue < minLimit = maxLimit
   | otherwise = nextValue
 
-checkColision :: AsteroidsGame -> AsteroidsGame
-checkColision game = game {bullets = bullets', asteroids = asteroids'}
+checkCollision :: AsteroidsGame -> AsteroidsGame
+checkCollision game = if reset then newGame else game {bullets = bullets', asteroids = asteroids'}
   where
+    (newGame, reset) = checkShipAsteroids game  
     (bullets', asteroids') = checkBulletAsteroids (bullets game , asteroids game)     
 
+checkShipAsteroids :: AsteroidsGame -> (AsteroidsGame, Bool)
+checkShipAsteroids game = if length collidedShip > 0 then (resetState game, True) else (game, False)
+  where        
+    collidedShip = filter (\asteroid -> (collideAsteroidShip asteroid (shipLoc game) (shipDimension game) ) ) (asteroids game)
+
+    collideAsteroidShip:: Asteroid -> (Float, Float) -> Float -> Bool
+    collideAsteroidShip a shipPosition shiSize = collides shipPosition shiSize (asteroidPosition a) (asteroidSize a)
+    
 checkBulletAsteroids :: ([Bullet], [Asteroid]) -> ([Bullet], [Asteroid])
 checkBulletAsteroids (bullets, asteroids) = (newBullets, newAsteroids)
   where
@@ -242,23 +249,22 @@ checkBulletAsteroids (bullets, asteroids) = (newBullets, newAsteroids)
     filterBullets bullets asteroids = bullets
 
     notCollidedAsteroids :: [Asteroid] -> Bullet -> [Asteroid]
-    notCollidedAsteroids asteroids bullet  = filter (\asteroid -> not (collide asteroid bullet ) ) asteroids
+    notCollidedAsteroids asteroids bullet  = filter (\asteroid -> not (collideAsteroidBullet asteroid bullet ) ) asteroids
 
     notCollidedBullets :: [Bullet] -> Asteroid -> [Bullet]
-    notCollidedBullets bullets asteroid = filter (\bullet -> not (collide asteroid bullet ) ) bullets
+    notCollidedBullets bullets asteroid = filter (\bullet -> not (collideAsteroidBullet asteroid bullet ) ) bullets
 
-    collide:: Asteroid -> Bullet -> Bool
-    collide a b = collides (bulletPosition b) (bulletSize b) (asteroidPosition a) (asteroidSize a)
+    collideAsteroidBullet:: Asteroid -> Bullet -> Bool
+    collideAsteroidBullet a b = collides (bulletPosition b) (bulletSize b) (asteroidPosition a) (asteroidSize a)
 
 collides :: Point -> Float -> Point -> Float -> Bool
 collides (x1, y1) s1 (x2, y2) s2 = magV (subtraction) < s1 + s2
-    where
-      subtraction = (x1 - x2, y1 - y2)
--- | Convert a game state into a picture.
+  where
+    subtraction = (x1 - x2, y1 - y2)
+
 render :: AsteroidsGame  -- ^ The game state to render.
        -> Picture   -- ^ A picture of this game state.
-render game =
-  pictures [asteroid, renderBullets, renderAsteroids]
+render game = pictures [asteroid, renderBullets, renderAsteroids]
   where    
     asteroid = uncurry translate (shipLoc game) $ rotate (rotation game) $ color (shipColor game) $ Line shipDraw
     ballColor = dark green
@@ -307,5 +313,5 @@ main = play window background fps initialState render handleKeys update
 -- | Update the game by moving the ball.
 -- Ignore the ViewPort argument.
 update :: Float -> AsteroidsGame -> AsteroidsGame
-update seconds = checkColision . (moveAsteroids seconds . (moveBullets seconds . (createBullet . moveShip seconds)))
+update seconds = checkCollision . (moveAsteroids seconds . (moveBullets seconds . (createBullet . moveShip seconds)))
 
