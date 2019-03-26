@@ -11,19 +11,25 @@ After install a Haskell dependencies, you will have access to Cabal tool. With t
 You can folow this [article](http://andrew.gibiansky.com/blog/haskell/haskell-gloss/) to init cabal in the project or follow the base local configurations.
 
 Run this to make a local environment of the project
+
 `
 cabal sandbox init
 `
+
 Run this to initialize the base project
 `
+
 cabal init 
 `
+
 Run this to install Gloss in project
 `
+
 cabal install gloss==1.12.*
 `
 
 Run this to generate and run the executable project
+
 `
 cabal run Main.h
 `
@@ -32,13 +38,15 @@ That will create a .exe file to play the game.
 
 ## Install - Gloss
 
-[Gloss lib](http://hackage.haskell.org/package/gloss)
+Is a vectorial lib to build polygons and text in window
+
+- [Gloss lib](http://hackage.haskell.org/package/gloss)
 
 # Game
 
 You can control the ship using "arrows" and shoot with "Ctrl" button.
 # References
 
-[First Game reference](http://andrew.gibiansky.com/blog/haskell/haskell-gloss/)
-[Future Game reference](http://jxv.io/blog/2018-02-28-A-Game-in-Haskell.html)
+- [First Game reference](http://andrew.gibiansky.com/blog/haskell/haskell-gloss/)
+- [Future Game reference](http://jxv.io/blog/2018-02-28-A-Game-in-Haskell.html)
 
