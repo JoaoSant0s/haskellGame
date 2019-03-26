@@ -17,14 +17,14 @@ cabal sandbox init
 `
 
 Run this to initialize the base project
-`
 
+`
 cabal init 
 `
 
 Run this to install Gloss in project
-`
 
+`
 cabal install gloss==1.12.*
 `
 
